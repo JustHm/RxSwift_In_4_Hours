@@ -25,6 +25,8 @@ class 나중에생기는데이터<T> { //RX로 치면 Observable
 }
 
 class ViewController: UIViewController {
+    let disposeBag = DisposeBag()
+    
     @IBOutlet var timerLabel: UILabel!
     @IBOutlet var editView: UITextView!
     
@@ -85,13 +87,17 @@ class ViewController: UIViewController {
     @IBAction func onLoad() {
         editView.text = ""
         self.setVisibleWithAnimation(self.activityIndicator, true)
+        
         /*
          [weak self]로 순환참조를 방지해줘야 하지만, 안해도 되는 이유는?
          일단 순환참조가 생기는 이유는 클로저가 self를 캡처해서 ARC count가 증가한 상태여서, 클로저가 없어지기만 하면 순환참조 발생 하지 않음.
          complete or error 호출이 되면 클로저가 동작을 다 했다고 알리는 것이여서 클로저가 사라짐.
          */
         let observable = downloadJson(MEMBER_LIST_URL)
-        observable
+        let helloObservable = Observable.just("Hello World")
+        
+//        observable
+        Observable.zip(observable, helloObservable) { $1 + "\n" + ($0 ?? "") }
             .debug() // 동작을 출력해줌.
             .observeOn(MainScheduler.instance) //옵저버가 어느 스케줄러 상에서 Observable을 관찰할지 명시한다. (operator)
             .subscribe(onNext: { json in
@@ -100,7 +106,13 @@ class ViewController: UIViewController {
                 self.setVisibleWithAnimation(self.activityIndicator, false)
                 //}
             })
+            .disposed(by: disposeBag)
         // Observable이 error or compelte 되면 자동으로 dispose된다.
         
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        disposeBag = DisposeBag() // pop될때 Dispose 안된 observable을 강제로 dispose시켜줌.
     }
 }
